@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手動對焦模擬器｜四邊收斂版</title>
+<style>
+:root{
+  --bg:#101513;--panel:#1a211e;--line:#39443d;--text:#edf4ed;
+  --muted:#9eada2;--green:#6dff9a;--red:#ff4c55;--amber:#ffd166;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#26332c 0,#101513 62%);color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:22px}
+.app{max-width:1120px;margin:auto}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:clamp(22px,3vw,32px);margin:0;letter-spacing:.03em}
+.sub{color:var(--muted);margin-top:4px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:6px 11px;color:var(--muted);font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:16px}
+.panel{background:linear-gradient(145deg,#1c2520,#141a17);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 14px 40px #0003}
+.panel h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:#cbd8ce;margin:0 0 12px}
+.viewfinder{position:relative;width:100%;aspect-ratio:4/3;overflow:hidden;border:1px solid #66756a;border-radius:10px;
+  background:#192820;touch-action:pan-y;user-select:none;cursor:crosshair}
+.scene{position:absolute;inset:0;background:
+  linear-gradient(180deg,transparent 0 52%,#14251c 52%),
+  linear-gradient(160deg,transparent 0 43%,#405d43 43.2% 52%,transparent 52.2%),
+  linear-gradient(200deg,transparent 0 36%,#2f4937 36.2% 51%,transparent 51.2%),
+  linear-gradient(180deg,#253c42 0%,#49625c 46%,#273e2d 46.2%,#18271d 100%)}
+.scene:before{content:"";position:absolute;left:0;right:0;top:52%;height:1px;background:#d7e8d855}
+.sun{position:absolute;width:34px;height:34px;border-radius:50%;right:14%;top:13%;background:#d6e3ad;box-shadow:0 0 38px #d6e3ad55}
+.mountain{position:absolute;left:-4%;right:-4%;bottom:0;height:58%;background:#223b2b;clip-path:polygon(0 72%,17% 25%,29% 55%,48% 4%,66% 56%,81% 22%,100% 72%,100% 100%,0 100%)}
+.mountain.back{height:48%;background:#48624a;opacity:.8;clip-path:polygon(0 65%,20% 17%,36% 58%,56% 0,76% 54%,91% 23%,100% 52%,100% 100%,0 100%)}
+.gridlines{position:absolute;inset:0;opacity:.16;pointer-events:none;background:
+  linear-gradient(90deg,transparent 33.2%,#e8f5e8 33.33%,transparent 33.5%,transparent 66.5%,#e8f5e8 66.67%,transparent 66.8%),
+  linear-gradient(0deg,transparent 33.2%,#e8f5e8 33.33%,transparent 33.5%,transparent 66.5%,#e8f5e8 66.67%,transparent 66.8%)}
+.frame{position:absolute;pointer-events:none;will-change:left,top,width,height}
+.target{border:2px solid var(--green);box-shadow:0 0 0 1px #07130b88,inset 0 0 15px #6dff9a12;pointer-events:auto;cursor:move;touch-action:none}
+.moving{border:2px solid var(--red);box-shadow:0 0 0 1px #21080a88,inset 0 0 20px #ff4c5514;z-index:3}
+.moving.locked{border-color:var(--green);box-shadow:0 0 0 1px #07130b88,inset 0 0 22px #6dff9a18}
+.moving.overshoot{animation:blink .48s steps(2,end) infinite}
+@keyframes blink{50%{opacity:.18}}
+.readout{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px}
+.status{font-weight:800;letter-spacing:.12em;font-size:13px;color:var(--red)}
+.status.locked{color:var(--green)}.status.overshoot{color:var(--amber)}
+.small{font-size:12px;color:var(--muted)}
+.controls{display:grid;gap:14px}
+.control-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:6px}
+.control-head label{font-weight:650}
+.value{font-variant-numeric:tabular-nums;color:var(--green);font-weight:750}
+input[type=range]{width:100%;accent-color:var(--green);cursor:pointer}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-weight:650;border:1px solid #46564b;background:#27332b;color:var(--text);border-radius:10px;padding:9px 12px;cursor:pointer}
+button:hover{background:#344338}button.primary{background:#1d5735;border-color:#3d9b5e}button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.dial-area{display:flex;align-items:center;gap:14px}
+.dial{width:84px;height:84px;flex:0 0 84px;border-radius:50%;border:7px dotted #718176;background:radial-gradient(circle,#35443a 0,#1a211d 65%);position:relative;cursor:ns-resize;touch-action:none;user-select:none}
+.dial:after{content:"";position:absolute;width:5px;height:19px;left:calc(50% - 2.5px);top:3px;background:var(--green);border-radius:4px}
+.dial-copy{font-size:12px;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.metric{padding:11px;border-radius:10px;background:#0d120f;border:1px solid #2d3931}
+.metric .label{font-size:11px;color:var(--muted)}.metric .num{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
+.hint{font-size:12px;color:var(--muted);margin:0}
+@media(max-width:760px){body{padding:12px}.layout{grid-template-columns:1fr}.panel{padding:12px}.viewfinder{aspect-ratio:4/3}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div><h1>手動對焦模擬器</h1><div class="sub">紅框四邊同步收斂・單點合焦輔助</div></div>
+    <div class="pill">MANUAL FOCUS / EDGE ALIGNMENT</div>
+  </header>
+  <div class="layout">
+    <section class="panel">
+      <h2>Optical Viewfinder</h2>
+      <div id="viewfinder" class="viewfinder" aria-label="觀景窗；可使用滑鼠滾輪調整焦點">
+        <div class="scene"><div class="sun"></div><div class="mountain back"></div><div class="mountain"></div></div>
+        <div class="gridlines"></div>
+        <div id="movingFrame" class="frame moving" aria-hidden="true"></div>
+        <div id="targetFrame" class="frame target" role="slider" tabindex="0" aria-label="綠色目標框，可拖曳或用方向鍵移動"></div>
+      </div>
+      <div class="readout">
+        <div id="status" class="status">FOCUS SEARCHING</div>
+        <div class="small">拖曳綠框移動目標・滾輪調焦</div>
+      </div>
+    </section>
+    <aside class="panel controls">
+      <div>
+        <h2>Focus Control</h2>
+        <div class="control-head"><label for="focusSlider">手動對焦位置</label><span id="focusValue" class="value">0</span></div>
+        <input id="focusSlider" type="range" min="0" max="100" step="0.1" value="0">
+      </div>
+      <div class="dial-area">
+        <div id="dial" class="dial" role="slider" tabindex="0" aria-label="拖曳對焦旋鈕"></div>
+        <div><div><strong>對焦環</strong></div><div class="dial-copy">上下拖曳或使用 ↑ ↓ 微調<br>滾輪也可調整焦點</div></div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="label">合焦重合度</div><div id="accuracy" class="num">0%</div></div>
+        <div class="metric"><div class="label">焦點差距</div><div id="distance" class="num">72</div></div>
+      </div>
+      <div>
+        <div class="control-head"><label>目標焦點位置</label><span id="targetValue" class="value">72</span></div>
+        <input id="targetSlider" type="range" min="10" max="95" step="0.1" value="72">
+        <p class="hint">此設定代表目標物的焦平面；紅框會由觀景窗四邊向綠框四邊收斂。</p>
+      </div>
+      <div class="btnrow">
+        <button id="autoBtn" class="primary">▶ 自動漸進對焦</button>
+        <button id="centerBtn">目標框置中</button>
+        <button id="resetBtn">重新設定</button>
+      </div>
+      <p class="hint">達到 95% 重合度時鎖定。超過目標焦點後，紅框會閃爍提示；綠框可用滑鼠、觸控或方向鍵移動。</p>
+    </aside>
+  </div>
+</div>
+<script>
+(() => {
+  const view = document.getElementById('viewfinder');
+  const moving = document.getElementById('movingFrame');
+  const target = document.getElementById('targetFrame');
+  const slider = document.getElementById('focusSlider');
+  const targetSlider = document.getElementById('targetSlider');
+  const focusValue = document.getElementById('focusValue');
+  const targetValue = document.getElementById('targetValue');
+  const accuracyEl = document.getElementById('accuracy');
+  const distanceEl = document.getElementById('distance');
+  const status = document.getElementById('status');
+  const dial = document.getElementById('dial');
+  const autoBtn = document.getElementById('autoBtn');
+
+  let focus = 0, targetFocus = 72;
+  let targetX = 50, targetY = 50, targetW = 25, targetH = 25;
+  let draggingTarget = false, dragX = 0, dragY = 0, startX = 50, startY = 50;
+  let draggingDial = false, dialY = 0, dialFocus = 0;
+  let autoTimer = null, raf = 0;
+  const clamp = (n,min,max) => Math.max(min,Math.min(max,n));
+
+  function rects(){
+    const r = view.getBoundingClientRect();
+    const w = r.width, h = r.height;
+    const tw = w * targetW / 100, th = h * targetH / 100;
+    const tx = w * targetX / 100 - tw/2, ty = h * targetY / 100 - th/2;
+    return {w,h,tx:clamp(tx,0,w-tw),ty:clamp(ty,0,h-th),tw,th};
+  }
+  function paintTarget(){
+    const a = rects();
+    target.style.left = `${a.tx/a.w*100}%`;
+    target.style.top = `${a.ty/a.h*100}%`;
+    target.style.width = `${a.tw/a.w*100}%`;
+    target.style.height = `${a.th/a.h*100}%`;
+  }
+  function render(){
+    const a = rects();
+    const error = Math.abs(focus-targetFocus);
+    const tolerance = Math.max(2.5, targetFocus*0.05);
+    const accuracy = clamp(100 - error / Math.max(targetFocus,100-targetFocus,1)*100,0,100);
+    const locked = error <= tolerance;
+    const overshot = focus > targetFocus + tolerance;
+
+    // 保留上一版的對焦模式：紅框大小取決於「目前焦點與目標焦點的差距」。
+    // 越接近目標，progress 越接近 1，四邊越貼近綠框；偏離或超焦時紅框會再次張開。
+    const maxError = Math.max(targetFocus, 100 - targetFocus, 1);
+    const progress = clamp(1 - error / maxError, 0, 1);
+    const left = a.tx * progress;
+    const top = a.ty * progress;
+    const width = a.w + (a.tw - a.w) * progress;
+    const height = a.h + (a.th - a.h) * progress;
+    moving.style.left = `${left/a.w*100}%`;
+    moving.style.top = `${top/a.h*100}%`;
+    moving.style.width = `${width/a.w*100}%`;
+    moving.style.height = `${height/a.h*100}%`;
+    moving.classList.toggle('locked', locked);
+    moving.classList.toggle('overshoot', overshot && !locked);
+
+    focusValue.textContent = focus.toFixed(1);
+    targetValue.textContent = targetFocus.toFixed(1);
+    accuracyEl.textContent = `${Math.round(accuracy)}%`;
+    distanceEl.textContent = error.toFixed(1);
+    slider.value = focus;
+    targetSlider.value = targetFocus;
+    status.className = 'status' + (locked ? ' locked' : overshot ? ' overshoot' : '');
+    status.textContent = locked ? '✓ FOCUS LOCKED' : overshot ? '⚠ OVERSHOT — TURN BACK' : 'FOCUS SEARCHING';
+    dial.style.transform = `rotate(${focus*2.7}deg)`;
+    target.setAttribute('aria-valuenow', `${Math.round(targetX)}, ${Math.round(targetY)}`);
+  }
+  function setFocus(v){focus=clamp(Number(v)||0,0,100);render();}
+  function stopAuto(){
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+    autoBtn.textContent='▶ 自動漸進對焦';
+  }
+  function setTargetPosition(x,y){
+    targetX=clamp(x,targetW/2,100-targetW/2);
+    targetY=clamp(y,targetH/2,100-targetH/2);
+    paintTarget();render();
+  }
+  slider.addEventListener('input',e=>{stopAuto();setFocus(e.target.value);});
+  targetSlider.addEventListener('input',e=>{targetFocus=Number(e.target.value);render();});
+  view.addEventListener('wheel',e=>{e.preventDefault();stopAuto();setFocus(focus+(e.deltaY<0?1:-1)*1.5);},{passive:false});
+
+  target.addEventListener('pointerdown',e=>{
+    e.preventDefault();draggingTarget=true;dragX=e.clientX;dragY=e.clientY;
+    startX=targetX;startY=targetY;target.setPointerCapture(e.pointerId);
+  });
+  target.addEventListener('pointermove',e=>{
+    if(!draggingTarget)return;
+    const r=view.getBoundingClientRect();
+    setTargetPosition(startX+(e.clientX-dragX)/r.width*100,startY+(e.clientY-dragY)/r.height*100);
+  });
+  function endTarget(){draggingTarget=false;}
+  target.addEventListener('pointerup',endTarget);
+  target.addEventListener('pointercancel',endTarget);
+  target.addEventListener('keydown',e=>{
+    const step=e.shiftKey?5:1;let x=targetX,y=targetY;
+    if(e.key==='ArrowLeft')x-=step;else if(e.key==='ArrowRight')x+=step;
+    else if(e.key==='ArrowUp')y-=step;else if(e.key==='ArrowDown')y+=step;else return;
+    e.preventDefault();setTargetPosition(x,y);
+  });
+
+  dial.addEventListener('pointerdown',e=>{
+    draggingDial=true;dialY=e.clientY;dialFocus=focus;dial.setPointerCapture(e.pointerId);stopAuto();
+  });
+  dial.addEventListener('pointermove',e=>{
+    if(!draggingDial)return;
+    setFocus(dialFocus+(dialY-e.clientY)*0.35);
+  });
+  function endDial(){draggingDial=false;}
+  dial.addEventListener('pointerup',endDial);dial.addEventListener('pointercancel',endDial);
+  dial.addEventListener('keydown',e=>{
+    if(e.key==='ArrowUp'||e.key==='ArrowRight'){e.preventDefault();stopAuto();setFocus(focus+1);}
+    else if(e.key==='ArrowDown'||e.key==='ArrowLeft'){e.preventDefault();stopAuto();setFocus(focus-1);}
+  });
+  document.addEventListener('keydown',e=>{
+    if(['INPUT','BUTTON'].includes(document.activeElement.tagName))return;
+    if(e.key==='ArrowRight'||e.key==='ArrowUp'){e.preventDefault();stopAuto();setFocus(focus+0.5);}
+    else if(e.key==='ArrowLeft'||e.key==='ArrowDown'){e.preventDefault();stopAuto();setFocus(focus-0.5);}
+  });
+  autoBtn.addEventListener('click',()=>{
+    if(autoTimer){stopAuto();return;}
+    autoBtn.textContent='Ⅱ 暫停自動對焦';
+    autoTimer=setInterval(()=>{
+      const diff=targetFocus-focus;
+      if(Math.abs(diff)<0.12){setFocus(targetFocus);stopAuto();return;}
+      setFocus(focus+diff*0.035);
+    },16);
+  });
+  document.getElementById('centerBtn').addEventListener('click',()=>setTargetPosition(50,50));
+  document.getElementById('resetBtn').addEventListener('click',()=>{
+    stopAuto();focus=0;targetFocus=72;targetX=50;targetY=50;targetW=25;targetH=25;
+    targetSlider.value=targetFocus;paintTarget();render();
+  });
+  window.addEventListener('resize',()=>{paintTarget();render();});
+  paintTarget();render();
+})();
+</script>
+</body>
+</html>
